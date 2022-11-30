@@ -46,7 +46,7 @@ systemd:
         TimeoutStartSec=180
         RemainAfterExit=yes
         KillMode=process
-        Environment="INSTALL_K3S_EXEC=--cluster-init --node-external-ip 172.16.42.108"
+        Environment="INSTALL_K3S_EXEC=--cluster-init8"
         ExecStart=/usr/bin/sh -c "/opt/k3s-install.sh"
         [Install]
         WantedBy=multi-user.target      
@@ -86,23 +86,6 @@ systemd:
         ExecStart=/usr/bin/sh -c "PATH=$PATH:/opt/bin && /opt/umh-install.sh"
         [Install]
         WantedBy=multi-user.target  
-    - name: sound-video-install.service
-      enabled: true 
-      contents: |
-        [Unit]
-        Description=Run sound and video deployments
-        Wants = network-online.target k3s-install.service helm-install.service umh-install.service
-        After = network.target network-online.target k3s-install.service helm-install.service umh-install.service
-        ConditionPathExists=!/opt/DO_NOT_DELETE_DRIVER_ARE_INSTALLED
-        [Service]
-        Type=forking
-        TimeoutStartSec=180
-        RemainAfterExit=yes
-        KillMode=process
-        Environment=""
-        ExecStart=/usr/bin/sh -c "PATH=$PATH:/opt/bin && kubectl apply -f /opt/benthos-sound-deployment.yaml --kubeconfig /etc/rancher/k3s/k3s.yaml && kubectl apply -f /opt/benthos-camera-deployment.yaml --kubeconfig /etc/rancher/k3s/k3s.yaml && touch /opt/DO_NOT_DELETE_DRIVER_ARE_INSTALLED"
-        [Install]
-        WantedBy=multi-user.target  
 passwd:
   users:
       # generated via mkpasswd --method=SHA-512 --rounds=4096
@@ -132,147 +115,6 @@ storage:
       contents:
         remote:
           url: https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3
-    - path: /opt/benthos-camera-deployment.yaml
-      filesystem: root
-      mode: 777
-      contents:
-        inline: |-
-          apiVersion: v1
-          kind: ConfigMap
-          metadata:
-            name: benthos-images-to-kafka-config
-            namespace: united-manufacturing-hub
-            labels:
-              app: benthos-images-to-kafka
-          data:
-            benthos.yaml: |-
-              input:
-                  http_client:
-                    url: http://172.16.42.20/snapshot.jpg
-                    verb: GET
-                    basic_auth:
-                      enabled: true
-                      username: admin
-                      password: admin
-                    rate_limit: webcam_frequency
-                    timeout: 5s
-                    retry_period: 1s
-                    max_retry_backoff: 300s
-                    retries: 3
-              pipeline:
-                processors:
-                  - bloblang: |
-                      let jpgImageAsBase64 = content().encode("base64").string()
-                      let timestamp = (timestamp_unix_nano() / 1000000).floor()
-                      root = {
-                        "timestamp_ms": $timestamp,
-                        "imageAsBase64EncodedJPG": $jpgImageAsBase64
-                      }
-              output:
-                kafka:
-                  addresses:
-                    - united-manufacturing-hub-kafka:9092
-                  topic: ia.raw.flixax8
-                  client_id: benthos_flixax8
-                  batching:
-                    period: 1s
-              rate_limit_resources:
-              - label: webcam_frequency
-                local:
-                  count: 1
-                  interval: 1s
-          ---
-          apiVersion: apps/v1
-          kind: Deployment
-          metadata:
-            name: benthos-images-to-kafka
-            namespace: united-manufacturing-hub
-            labels:
-              app: benthos-images-to-kafka
-          spec:
-            replicas: 1
-            selector:
-              matchLabels:
-                app: benthos-images-to-kafka
-            template:
-              metadata:
-                labels:
-                  app: benthos-images-to-kafka
-              spec:
-                containers:
-                  - name: benthos-images-to-kafka
-                    image: "jeffail/benthos:latest"
-                    imagePullPolicy: IfNotPresent
-                    ports:
-                      - name: http
-                        containerPort: 4195
-                        protocol: TCP
-                    livenessProbe:
-                      httpGet:
-                        path: /ping
-                        port: http
-                    readinessProbe:
-                      httpGet:
-                        path: /ready
-                        port: http
-                    volumeMounts:
-                      - name: config
-                        mountPath: "/benthos.yaml"
-                        subPath: "benthos.yaml"
-                        readOnly: true
-                volumes:
-                  - name: config
-                    configMap:
-                      name: benthos-images-to-kafka-config
-    - path: /opt/benthos-sound-deployment.yaml
-      filesystem: root
-      mode: 777
-      contents:
-        inline: |-
-          apiVersion: apps/v1
-          kind: Deployment
-          metadata:
-            name: benthos-sound-to-kafka
-            namespace: united-manufacturing-hub
-            labels:
-              app: benthos-sound-to-kafka
-          spec:
-            replicas: 1
-            selector:
-              matchLabels:
-                app: benthos-sound-to-kafka
-            template:
-              metadata:
-                labels:
-                  app: benthos-sound-to-kafka
-              spec:
-                containers:
-                - name: benthos-sound-to-kafka
-                  image: unitedmanufacturinghub/benthos-sound-to-kafka:latest
-                  env:
-                    - name: HARDWARE_DEVICE
-                      value: "hw:0,0"
-                    - name: HARDWARE_DEVICE_CHANNEL
-                      value: "2"
-                    - name: HARDWARE_DEVICE_FORMAT
-                      value: "S16_LE"
-                    - name: HARDWARE_DEVICE_SAMPLE_RATE
-                      value: "48000"
-                    - name: KAFKA_BROKER
-                      value: "united-manufacturing-hub-kafka:9092"
-                    - name: KAFKA_TOPIC
-                      value: "ia.raw.audio"
-                    - name: KAFKA_CLIENT_ID
-                      value: "benthos_sound"
-                  securityContext:
-                    privileged: true
-                  volumeMounts:
-                    - name: devs
-                      mountPath: /dev/
-                volumes:
-                - name: devs
-                  hostPath:
-                    path: /dev/
     - path: /opt/umh-install.sh
       filesystem: root
       mode: 777
