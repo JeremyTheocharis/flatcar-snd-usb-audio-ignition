@@ -12,7 +12,7 @@ systemd:
         TimeoutStartSec=180
         RemainAfterExit=yes
         KillMode=process
-        ExecStart=/usr/bin/sh -c "flatcar-install -D /dev/sda https://raw.githubusercontent.com/JeremyTheocharis/flatcar-snd-usb-audio-ignition/main/ignition.ign && reboot"
+        ExecStart=/usr/bin/sh -c "flatcar-install -D /dev/sda -i https://raw.githubusercontent.com/JeremyTheocharis/flatcar-snd-usb-audio-ignition/main/ignition.ign && reboot"
         [Install]
         WantedBy=multi-user.target      
 passwd:
@@ -31,48 +31,4 @@ storage:
       filesystem: root
       mode: 0644      
       contents:
-        inline: flatcar-development 
-    - path: /opt/k3s-install.sh
-      filesystem: root
-      mode: 777
-      contents:
-        remote:
-          url: https://get.k3s.io
-    - path: /opt/helm-install.sh
-      filesystem: root
-      mode: 777
-      contents:
-        remote:
-          url: https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3
-    - path: /opt/umh-install.sh
-      filesystem: root
-      mode: 777
-      contents:
-        inline: |-
-          #!/bin/sh
-          echo "Installing the United Manufacturing Hub. This might take a while..."
-
-          echo "Adding helm repo..."
-          if ! helm repo add united-manufacturing-hub https://repo.umh.app/; then
-          echo "Failed to add umh repository, aborting setup"
-          exit
-          fi
-          echo "Added helm repo!"
-
-          echo "Creating namespace united-manufacturing-hub..."
-          if ! kubectl create namespace united-manufacturing-hub; then
-          echo "Failed to create kubernetes namespace for united-manufacturing-hub, aborting setup"
-          exit
-          fi
-          echo "Created namespace!"
-
-          echo "Install Helm chart united-manufacturing-hub..."
-          if ! helm install united-manufacturing-hub united-manufacturing-hub/united-manufacturing-hub --set serialNumber=$(hostname) --kubeconfig /etc/rancher/k3s/k3s.yaml -n united-manufacturing-hub; then
-          echo "Failed to install united-manufacturing-hub using helm, aborting setup"
-          exit
-          fi
-          echo "Installed Helm chart!"
-
-          touch /opt/DO_NOT_DELETE_UMH_IS_INSTALLED
-
-          echo "United Manufacturing Hub successfully installed! However, it might take a couple of minutes until all services are successfully started up."
+        inline: flatcar-install 
