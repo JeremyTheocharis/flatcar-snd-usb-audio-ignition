@@ -10,7 +10,7 @@ Download ipxe iso image
 Next press Ctrl+B to get to the iPXE prompt and type in the following commands:
 ```
 iPXE> dhcp
-iPXE> chain http://${YOUR_BOOT_URL}
+iPXE> chain https://bit.ly/3ufiC3M
 ```
 
 Ignition: https://bit.ly/3Vm1a9v
