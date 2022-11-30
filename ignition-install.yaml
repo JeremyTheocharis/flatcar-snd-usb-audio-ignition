@@ -4,15 +4,16 @@ systemd:
       enabled: true 
       contents: |
         [Unit]
-        Description=Installs flatcar to disk
+        Description=Installs flatcar to /dev/sda
         Wants = network-online.target
         After = network.target network-online.target        
+        ConditionPathExists=/opt/ignition.ign
         [Service]
         Type=forking
         TimeoutStartSec=180
         RemainAfterExit=yes
         KillMode=process
-        ExecStart=/usr/bin/sh -c "cd ~ && wget https://raw.githubusercontent.com/JeremyTheocharis/flatcar-snd-usb-audio-ignition/main/ignition.ign && flatcar-install -D /dev/sda -i ignition.ign && echo FINISHED INSTALLATION"
+        ExecStart=/usr/bin/sh -c "flatcar-install -d /dev/sda -i /opt/ignition.ign && reboot"
         [Install]
         WantedBy=multi-user.target      
 passwd:
@@ -32,3 +33,9 @@ storage:
       mode: 0644      
       contents:
         inline: flatcar-install 
+    - path: /opt/ignition.ign
+      filesystem: root
+      mode: 777
+      contents:
+        remote:
+          url: https://raw.githubusercontent.com/JeremyTheocharis/flatcar-snd-usb-audio-ignition/main/ignition.ign
