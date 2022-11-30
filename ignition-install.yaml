@@ -12,7 +12,7 @@ systemd:
         TimeoutStartSec=180
         RemainAfterExit=yes
         KillMode=process
-        ExecStart=/usr/bin/sh -c "flatcar-install -D /dev/sda -i https://raw.githubusercontent.com/JeremyTheocharis/flatcar-snd-usb-audio-ignition/main/ignition.ign && reboot"
+        ExecStart=/usr/bin/sh -c "cd ~ && wget https://raw.githubusercontent.com/JeremyTheocharis/flatcar-snd-usb-audio-ignition/main/ignition.ign && flatcar-install -D /dev/sda -i ignition.ign && echo FINISHED INSTALLATION"
         [Install]
         WantedBy=multi-user.target      
 passwd:
